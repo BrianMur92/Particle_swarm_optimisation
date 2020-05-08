@@ -1,6 +1,6 @@
 # Author:       Brian Murphy
 # Date started: 16/03/2020
-# Last updated: 16/03/2020
+# Last updated: <03/04/2020 15:15:01 (BrianM)>
 
 import numpy as np
 import time
@@ -12,6 +12,8 @@ def default_PSO_params(params):
     To prevent this, specify the wdamp parameter that isn't 1.
 
     Will display info by default
+
+    Early stopping is disabled by default
     """
     if 'maxit' not in params:
         params['maxit'] = 30
@@ -30,14 +32,16 @@ def default_PSO_params(params):
     if 'display_info' not in params:
         params['display_info'] = 1
     if 'early_stopping' not in params:
-        params['early_stopping'] = 1
+        params['early_stopping'] = 0
     if 'early_stopping_rounds' not in params:
         params['early_stopping_rounds'] = 10
+    if 'velocity_limit_scale' not in params:
+        params['velocity_limit_scale'] = 0.2
 
     return params
 
 
-class Particle():
+class Particle:
     def __init__(self):
         self.position = 0
         self.velocity = 0
@@ -64,7 +68,7 @@ class Particle():
         self.position = np.min([self.position, varmax], axis=0)
 
 
-def PSO(problem, params):
+def PSO(problem, params, *args):
     """
     Syntax: gbest_value, gbest_position, best_costs = PSO.PSO(problem, params)
 
@@ -109,6 +113,8 @@ def PSO(problem, params):
         print('The error was %f' % gbest_value)
 
     """
+    if not args:
+        args = []
 
     # Setting the random seed based off the current time
     np.random.seed(int(time.time()))
@@ -129,7 +135,7 @@ def PSO(problem, params):
     con = params['con']  # constriction value
 
     display_info = params['display_info']  # flag to show iteration info
-    max_velocity = 0.2 * (varmax - varmin)
+    max_velocity = params['velocity_limit_scale'] * (varmax - varmin)
     # TODO: may need to modify this for categorical parameters
     min_velocity = -max_velocity
 
@@ -143,7 +149,7 @@ def PSO(problem, params):
     for particle in particles_vector:  # set particles initial position within confines
         particle.initial_position(varmin, varmax)
         particle.pbest_position = particle.position
-        particle.pbest_value = cost_function(particle.position)
+        particle.pbest_value = cost_function(particle.position, args)
         if particle.pbest_value < gbest_value:
             gbest_value = particle.pbest_value
             gbest_position = particle.pbest_position
@@ -163,7 +169,7 @@ def PSO(problem, params):
 
 
             # Evaluate the cost at the new function
-            cost_at_new_position = cost_function(particle.position)
+            cost_at_new_position = cost_function(particle.position, args)
             if cost_at_new_position < particle.pbest_value:
                 particle.pbest_value = cost_at_new_position
                 particle.pbest_position = particle.position
@@ -191,7 +197,3 @@ def PSO(problem, params):
         print('Finished the PSO process')
         print('Best cost: ', str(gbest_value), '  Best position: ', str(gbest_position))
     return gbest_value, gbest_position, best_costs
-
-
-
-
