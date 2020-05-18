@@ -1,6 +1,6 @@
 # Author:       Brian Murphy
 # Date started: 16/03/2020
-# Last updated: <03/04/2020 15:15:01 (BrianM)>
+# Last updated: <08/05/2020 09:52:57 (BrianM)>
 
 import numpy as np
 import time
@@ -27,7 +27,7 @@ def default_PSO_params(params):
         params['c1'] = 2.05
     if 'c2' not in params:
         params['c2'] = 2.05
-    if 'con' not in params and params['wdamp'] != 1:
+    if 'con' not in params and params['wdamp'] != 1 and params['w'] != 1:
         params['con'] = 0.7298437881283576
     if 'display_info' not in params:
         params['display_info'] = 1
@@ -35,8 +35,12 @@ def default_PSO_params(params):
         params['early_stopping'] = 0
     if 'early_stopping_rounds' not in params:
         params['early_stopping_rounds'] = 10
-    if 'velocity_limit_scale' not in params:
+    if 'BPSO' not in params:
+        params['BPSO'] = 0
+    if 'velocity_limit_scale' not in params and params['BPSO'] == 0:
         params['velocity_limit_scale'] = 0.2
+    elif params['BPSO'] == 1:
+        params['velocity_limit_scale'] = 1
 
     return params
 
@@ -48,9 +52,13 @@ class Particle:
         self.pbest_position = self.position
         self.pbest_value = float('inf')
 
-    def initial_position(self, varmin, varmax):
-        self.position = np.random.uniform(low=varmin, high=varmax, size=[1, len(varmin)])[0]
+    def initial_position(self, varmin, varmax, BPSO):
+        if not BPSO:
+            self.position = np.random.uniform(low=varmin, high=varmax, size=[1, len(varmin)])[0]
+        else:
+            self.position = np.random.uniform(low=0, high=1, size=[1, len(varmin)])[0]
         self.pbest_position = self.position
+        self.velocity = np.random.uniform(low=varmin, high=varmax, size=[1, len(varmin)])[0]
 
     def update_velocity(self, con, w, c1, c2, gbest_position, min_velocity, max_velocity):
         self.velocity = con * ((w * self.velocity)
@@ -60,12 +68,28 @@ class Particle:
         self.velocity = np.max([self.velocity, min_velocity], axis=0)
         self.velocity = np.min([self.velocity, max_velocity], axis=0)
 
+    def update_position(self, varmin, varmax, BPSO):
+        if not BPSO:
+            self.position = self.position + self.velocity
+            # Apply position limits
+            self.position = np.max([self.position, varmin], axis=0)
+            self.position = np.min([self.position, varmax], axis=0)
+        else:
+            sig_velocity = self.sigmoid(self.velocity)
+            self.position = np.array([1 if np.random.rand(1) < p else 0 for p in sig_velocity])
 
-    def update_position(self, varmin, varmax):
-        self.position = self.position + self.velocity
-        # Apply position limits
-        self.position = np.max([self.position, varmin], axis=0)
-        self.position = np.min([self.position, varmax], axis=0)
+    def sigmoid(self, x):
+        return 1.0/(1.0 + np.exp(-x))
+
+
+def examine_particles(particles_vector, gbest_position):
+    converged = 0
+    ham_dist = []
+    for particle in particles_vector:
+        if all(particle.position == gbest_position):
+            converged += 1
+        ham_dist.append(sum(particle.position != gbest_position))
+    return {'number_converged': converged, 'particle_hamming_distance': ham_dist}
 
 
 def PSO(problem, params, *args):
@@ -89,9 +113,11 @@ def PSO(problem, params, *args):
 
         print('Find the centre of a circle of the form (x-a)^2 + (y-b)^2 = r^2 where x, y and r equal 3, 4 and 5.')
 
+
         # Define the cost function
         def circle_cost(positions):
             return np.abs(25 - ((3 - positions[0]) ** 2 + (4 - positions[1]) ** 2))
+
 
         cost_function = circle_cost
 
@@ -136,7 +162,6 @@ def PSO(problem, params, *args):
 
     display_info = params['display_info']  # flag to show iteration info
     max_velocity = params['velocity_limit_scale'] * (varmax - varmin)
-    # TODO: may need to modify this for categorical parameters
     min_velocity = -max_velocity
 
 
@@ -147,7 +172,7 @@ def PSO(problem, params, *args):
     gbest_position = []
 
     for particle in particles_vector:  # set particles initial position within confines
-        particle.initial_position(varmin, varmax)
+        particle.initial_position(varmin, varmax, params['BPSO'])
         particle.pbest_position = particle.position
         particle.pbest_value = cost_function(particle.position, args)
         if particle.pbest_value < gbest_value:
@@ -156,17 +181,16 @@ def PSO(problem, params, *args):
 
     best_costs = np.zeros(maxit+1)
     best_costs[0] = gbest_value  # track best costs
-
+    particle_debug = []
     # Enter main PSO loop
     for it in range(maxit):
-
+        particle_debug.append(examine_particles(particles_vector, gbest_position))
         for particle in particles_vector:
             # Update velocity
             particle.update_velocity(con, w, c1, c2, gbest_position, min_velocity, max_velocity)
 
             # Update position
-            particle.update_position(varmin, varmax)
-
+            particle.update_position(varmin, varmax, params['BPSO'])
 
             # Evaluate the cost at the new function
             cost_at_new_position = cost_function(particle.position, args)
