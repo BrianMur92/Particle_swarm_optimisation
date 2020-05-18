@@ -6,7 +6,8 @@ Python code that is used to implement particle swarm optimisation (PSO). PSO is 
 
 ---
 
-[Requirements](#requirements) | [Use](#use) | [Files](#files) | [Test computer
+[Requirements](#requirements) | [Use](#use) | [Quantitative
+features](#quantitative-features) | [Files](#files) | [Test computer
 setup](#test-computer-setup) | [Licence](#licence) | [References](#references) |
 [Contact](#contact)
 
@@ -77,6 +78,16 @@ The second parameter is the `params` parameter, it is a dictionary and has lots 
 | 'early_stopping'        | Use early stopping                               |0         |
 | 'early_stopping_rounds' | How many rounds to stop after if no improvement  |10        |
 | 'velocity_limit_scale'  | Scaling factor used to set max velocity          |0.2       |
+| 'BPSO'                  | Is it binary PSO                                 |0         |
+
+
+
+
+
+Note: care should be taken when using binary PSO. The `varmin` and `varmax` values in the `problem` dictionary should 
+not be set to 0 and 1 but rather values like -5 and 5. The velocities are still used to assess how strong of a draw 
+there is to being 1 or 0. It is also recommended to set 'velocity_limit_scale' to 1 for binary PSO.
+
 
 
 
@@ -85,6 +96,7 @@ The second parameter is the `params` parameter, it is a dictionary and has lots 
 Some python files (.py files) have a description and an example in the header. To read this
 header, type `help(filename)` in the console after importing (`import filename`).  Directory structure is as follows: 
 ```
+├── demos.py              # Python file with examples
 ├── CHANGELOG.md          # changelog file
 ├── LICENSE.md            # license file 
 ├── PSO.py                # PSO file
@@ -140,6 +152,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 2. Shi, Yuhui, and Russell Eberhart. "A modified particle swarm optimizer." 1998 IEEE international conference on evolutionary computation proceedings. IEEE world congress on computational intelligence (Cat. No. 98TH8360). IEEE, 1998.
 
 3. Clerc, Maurice, and James Kennedy. "The particle swarm-explosion, stability, and convergence in a multidimensional complex space." IEEE transactions on Evolutionary Computation 6.1 (2002): 58-73.
+
+4. Kennedy, James, and Russell C. Eberhart. "A discrete binary version of the particle swarm algorithm." 1997 IEEE International conference on systems, man, and cybernetics. Computational cybernetics and simulation. Vol. 5. IEEE, 1997.
 
 
 
